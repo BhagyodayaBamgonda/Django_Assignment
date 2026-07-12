@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h2 class="mb-4">Dashboard</h2>
+
+<div class="row">
+
+<div class="col-md-3">
+
+<div class="card bg-primary text-white">
+
+<div class="card-body">
+
+<h3 id="employees">0</h3>
+
+Total Employees
+
+</div>
+
+</div>
+
+</div>
+
+<div class="col-md-3">
+
+<div class="card bg-success text-white">
+
+<div class="card-body">
+
+<h3 id="leave">0</h3>
+
+Leave Applications
+
+</div>
+
+</div>
+
+</div>
+
+<div class="col-md-2">
+
+<div class="card bg-warning">
+
+<div class="card-body">
+
+<h3 id="pending">0</h3>
+
+Pending
+
+</div>
+
+</div>
+
+</div>
+
+<div class="col-md-2">
+
+<div class="card bg-info text-white">
+
+<div class="card-body">
+
+<h3 id="approved">0</h3>
+
+Approved
+
+</div>
+
+</div>
+
+</div>
+
+<div class="col-md-2">
+
+<div class="card bg-danger text-white">
+
+<div class="card-body">
+
+<h3 id="rejected">0</h3>
+
+Rejected
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+fetch("/api/dashboard/")
+
+.then(res=>res.json())
+
+.then(data=>{
+
+document.getElementById("employees").innerHTML=data.total_employees;
+
+document.getElementById("leave").innerHTML=data.total_leave_applications;
+
+document.getElementById("pending").innerHTML=data.pending;
+
+document.getElementById("approved").innerHTML=data.approved;
+
+document.getElementById("rejected").innerHTML=data.rejected;
+
+})
+
+</script>
+
+{% endblock %}
