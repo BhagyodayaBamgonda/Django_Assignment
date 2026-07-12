@@ -133,9 +133,7 @@ function saveLeave(){
 
         to_date:document.getElementById("to_date").value,
 
-        reason:document.getElementById("reason").value,
-
-        status:document.getElementById("status").value
+        reason:document.getElementById("reason").value
 
     };
 
@@ -178,7 +176,6 @@ function editLeave(id){
         document.getElementById("from_date").value=l.from_date;
         document.getElementById("to_date").value=l.to_date;
         document.getElementById("reason").value=l.reason;
-        document.getElementById("status").value=l.status;
 
     });
 
@@ -199,9 +196,7 @@ function updateLeave(){
 
         to_date:document.getElementById("to_date").value,
 
-        reason:document.getElementById("reason").value,
-
-        status:document.getElementById("status").value
+        reason:document.getElementById("reason").value
 
     };
 

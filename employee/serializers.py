@@ -31,6 +31,7 @@ class LeaveSerializer(serializers.ModelSerializer):
             "reason",
             "status",
         ]
+        read_only_fields = ["status"]
 
     def validate(self, data):
 
