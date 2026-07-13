@@ -1,11 +1,58 @@
 const leaveApi = "/api/leaves/";
 const empApi = "/api/employees/";
+const leavePage = document.getElementById("leavePage");
+const isAdmin = leavePage.dataset.isAdmin === "true";
+
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+
+    if (parts.length === 2) {
+        return parts.pop().split(";").shift();
+    }
+
+    return "";
+}
+
+function csrfHeaders() {
+    const csrfInput = document.querySelector("[name=csrfmiddlewaretoken]");
+    const csrfMeta = document.querySelector("meta[name=csrf-token]");
+    const token = csrfInput?.value || csrfMeta?.content || getCookie("csrftoken");
+
+    if (!token) {
+        alert("CSRF token not found. Please login again and reload the page.");
+    }
+
+    return {
+        "Content-Type": "application/json",
+        "X-CSRFToken": token
+    };
+}
 
 function handleApiResponse(res) {
-    return res.json().then(data => {
+    if (res.status === 204) {
+        if (!res.ok) {
+            throw "Request failed";
+        }
+
+        return Promise.resolve({});
+    }
+
+    return res.text().then(text => {
+        let data = {};
+
+        if (text) {
+            try {
+                data = JSON.parse(text);
+            } catch (error) {
+                data = text;
+            }
+        }
+
         if (!res.ok) {
             throw data;
         }
+
         return data;
     });
 }
@@ -22,29 +69,6 @@ function showApiError(error) {
     }
 
     alert(message);
-}
-
-// Load Employee Dropdown
-function loadEmployees(){
-
-    fetch(empApi)
-    .then(res=>res.json())
-    .then(data=>{
-
-        let options="";
-
-        data.forEach(emp=>{
-
-            options+=`<option value="${emp.id}">
-                        ${emp.name}
-                      </option>`;
-
-        });
-
-        document.getElementById("employee").innerHTML=options;
-
-    });
-
 }
 
 // Load Leave Table
@@ -73,6 +97,31 @@ function loadLeaves(){
         let rows="";
 
         data.forEach(l=>{
+            let actions = "";
+
+            if (isAdmin) {
+                actions = `
+                <select id="status_${l.id}" class="form-control form-control-sm mb-2">
+                    <option ${l.status === "Pending" ? "selected" : ""}>Pending</option>
+                    <option ${l.status === "Approved" ? "selected" : ""}>Approved</option>
+                    <option ${l.status === "Rejected" ? "selected" : ""}>Rejected</option>
+                </select>
+                <button class="btn btn-primary btn-sm" onclick="updateStatus(${l.id})">
+                    Update Status
+                </button>
+                `;
+            } else if (l.status === "Pending") {
+                actions = `
+                <button class="btn btn-warning btn-sm" onclick="editLeave(${l.id})">
+                    Edit
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="deleteLeave(${l.id})">
+                    Delete
+                </button>
+                `;
+            } else {
+                actions = "-";
+            }
 
             rows+=`
             <tr>
@@ -93,19 +142,7 @@ function loadLeaves(){
 
             <td>
 
-            <button class="btn btn-warning btn-sm"
-            onclick="editLeave(${l.id})">
-
-            Edit
-
-            </button>
-
-            <button class="btn btn-danger btn-sm"
-            onclick="deleteLeave(${l.id})">
-
-            Delete
-
-            </button>
+            ${actions}
 
             </td>
 
@@ -125,8 +162,6 @@ function saveLeave(){
 
     let leave={
 
-        employee:document.getElementById("employee").value,
-
         leave_type:document.getElementById("leave_type").value,
 
         from_date:document.getElementById("from_date").value,
@@ -138,15 +173,10 @@ function saveLeave(){
     };
 
     fetch(leaveApi,{
-
         method:"POST",
-
-        headers:{
-            "Content-Type":"application/json"
-        },
-
+        credentials:"same-origin",
+        headers: csrfHeaders(),
         body:JSON.stringify(leave)
-
     })
 
     .then(handleApiResponse)
@@ -154,6 +184,8 @@ function saveLeave(){
     .then(data=>{
 
         alert("Leave Added Successfully");
+
+        clearLeaveForm();
 
         loadLeaves();
 
@@ -171,7 +203,6 @@ function editLeave(id){
     .then(l=>{
 
         document.getElementById("leave_id").value=l.id;
-        document.getElementById("employee").value=l.employee;
         document.getElementById("leave_type").value=l.leave_type;
         document.getElementById("from_date").value=l.from_date;
         document.getElementById("to_date").value=l.to_date;
@@ -188,8 +219,6 @@ function updateLeave(){
 
     let leave={
 
-        employee:document.getElementById("employee").value,
-
         leave_type:document.getElementById("leave_type").value,
 
         from_date:document.getElementById("from_date").value,
@@ -201,15 +230,10 @@ function updateLeave(){
     };
 
     fetch(leaveApi+id+"/",{
-
         method:"PUT",
-
-        headers:{
-            "Content-Type":"application/json"
-        },
-
+        credentials:"same-origin",
+        headers: csrfHeaders(),
         body:JSON.stringify(leave)
-
     })
 
     .then(handleApiResponse)
@@ -217,6 +241,33 @@ function updateLeave(){
     .then(data=>{
 
         alert("Leave Updated Successfully");
+
+        clearLeaveForm();
+
+        loadLeaves();
+
+    })
+
+    .catch(showApiError);
+
+}
+
+function updateStatus(id){
+
+    let statusValue=document.getElementById("status_"+id).value;
+
+    fetch(leaveApi+id+"/",{
+        method:"PUT",
+        credentials:"same-origin",
+        headers: csrfHeaders(),
+        body:JSON.stringify({status:statusValue})
+    })
+
+    .then(handleApiResponse)
+
+    .then(data=>{
+
+        alert("Leave Status Updated");
 
         loadLeaves();
 
@@ -232,22 +283,37 @@ function deleteLeave(id){
     if(confirm("Delete Leave?")){
 
         fetch(leaveApi+id+"/",{
-
-            method:"DELETE"
-
+            method:"DELETE",
+            credentials:"same-origin",
+            headers:{
+                "X-CSRFToken": csrfHeaders()["X-CSRFToken"]
+            }
         })
+
+        .then(handleApiResponse)
 
         .then(()=>{
 
             alert("Leave Deleted");
 
+            clearLeaveForm();
+
             loadLeaves();
 
-        });
+        })
+
+        .catch(showApiError);
 
     }
 
 }
 
-loadEmployees();
+function clearLeaveForm(){
+    document.getElementById("leave_id").value="";
+    document.getElementById("leave_type").value="Casual";
+    document.getElementById("from_date").value="";
+    document.getElementById("to_date").value="";
+    document.getElementById("reason").value="";
+}
+
 loadLeaves();

@@ -1,10 +1,55 @@
 const api = "/api/employees/";
 
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+
+    if (parts.length === 2) {
+        return parts.pop().split(";").shift();
+    }
+
+    return "";
+}
+
+function csrfHeaders() {
+    const csrfInput = document.querySelector("[name=csrfmiddlewaretoken]");
+    const csrfMeta = document.querySelector("meta[name=csrf-token]");
+    const token = csrfInput?.value || csrfMeta?.content || getCookie("csrftoken");
+
+    if (!token) {
+        alert("CSRF token not found. Please login again and reload the page.");
+    }
+
+    return {
+        "Content-Type": "application/json",
+        "X-CSRFToken": token
+    };
+}
+
 function handleApiResponse(res) {
-    return res.json().then(data => {
+    if (res.status === 204) {
+        if (!res.ok) {
+            throw "Request failed";
+        }
+
+        return Promise.resolve({});
+    }
+
+    return res.text().then(text => {
+        let data = {};
+
+        if (text) {
+            try {
+                data = JSON.parse(text);
+            } catch (error) {
+                data = text;
+            }
+        }
+
         if (!res.ok) {
             throw data;
         }
+
         return data;
     });
 }
@@ -27,9 +72,16 @@ function showApiError(error) {
 function loadEmployees() {
 
     let search = document.getElementById("search").value;
+    let params = new URLSearchParams({
+        search: search,
+        _: Date.now()
+    });
 
-    fetch(api + "?search=" + search)
-    .then(res => res.json())
+    fetch(api + "?" + params.toString(), {
+        credentials: "same-origin",
+        cache: "no-store"
+    })
+    .then(handleApiResponse)
     .then(data => {
 
         let rows = "";
@@ -37,7 +89,7 @@ function loadEmployees() {
         data.forEach(emp => {
 
             rows += `
-            <tr>
+            <tr id="employee-row-${emp.id}">
                 <td>${emp.id}</td>
                 <td>${emp.employee_id}</td>
                 <td>${emp.name}</td>
@@ -67,7 +119,8 @@ function loadEmployees() {
 
         document.getElementById("employeeTable").innerHTML = rows;
 
-    });
+    })
+    .catch(showApiError);
 
 }
 
@@ -77,6 +130,10 @@ function saveEmployee() {
     let employee = {
 
         employee_id: document.getElementById("employee_id").value,
+
+        username: document.getElementById("username").value,
+
+        password: document.getElementById("password").value,
 
         name: document.getElementById("name").value,
 
@@ -94,11 +151,9 @@ function saveEmployee() {
 
         method: "POST",
 
-        headers: {
+        credentials: "same-origin",
 
-            "Content-Type": "application/json"
-
-        },
+        headers: csrfHeaders(),
 
         body: JSON.stringify(employee)
 
@@ -133,6 +188,10 @@ function editEmployee(id) {
 
         document.getElementById("employee_id").value = emp.employee_id;
 
+        document.getElementById("username").value = emp.username || "";
+
+        document.getElementById("password").value = "";
+
         document.getElementById("name").value = emp.name;
 
         document.getElementById("email").value = emp.email;
@@ -156,6 +215,10 @@ function updateEmployee() {
 
         employee_id: document.getElementById("employee_id").value,
 
+        username: document.getElementById("username").value,
+
+        password: document.getElementById("password").value,
+
         name: document.getElementById("name").value,
 
         email: document.getElementById("email").value,
@@ -172,11 +235,9 @@ function updateEmployee() {
 
         method: "PUT",
 
-        headers: {
+        credentials: "same-origin",
 
-            "Content-Type": "application/json"
-
-        },
+        headers: csrfHeaders(),
 
         body: JSON.stringify(employee)
 
@@ -205,17 +266,37 @@ function deleteEmployee(id) {
 
         fetch(api + id + "/", {
 
-            method: "DELETE"
+            method: "DELETE",
+
+            credentials: "same-origin",
+
+            headers: {
+
+                "X-CSRFToken": csrfHeaders()["X-CSRFToken"]
+
+            }
 
         })
+
+        .then(handleApiResponse)
 
         .then(() => {
 
             alert("Employee Deleted");
 
+            clearForm();
+
+            let row = document.getElementById("employee-row-" + id);
+
+            if (row) {
+                row.remove();
+            }
+
             loadEmployees();
 
-        });
+        })
+
+        .catch(showApiError);
 
     }
 
@@ -227,6 +308,10 @@ function clearForm(){
     document.getElementById("id").value="";
 
     document.getElementById("employee_id").value="";
+
+    document.getElementById("username").value="";
+
+    document.getElementById("password").value="";
 
     document.getElementById("name").value="";
 

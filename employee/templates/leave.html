@@ -2,18 +2,20 @@
 
 {% block content %}
 
-<div class="container mt-4">
+<div class="container mt-4"
+     id="leavePage"
+     data-is-admin="{{ is_admin|yesno:'true,false' }}"
+     data-employee-id="{% if employee %}{{ employee.id }}{% endif %}">
 
     <h2 class="text-center">Leave Management</h2>
 
+    {% csrf_token %}
+
+    {% if not is_admin %}
     <input type="hidden" id="leave_id">
+    <input type="hidden" id="employee" value="{% if employee %}{{ employee.id }}{% endif %}">
 
     <div class="row">
-
-        <div class="col-md-4">
-            <label>Employee</label>
-            <select id="employee" class="form-control"></select>
-        </div>
 
         <div class="col-md-4">
             <label>Leave Type</label>
@@ -56,6 +58,7 @@
         </button>
 
     </div>
+    {% endif %}
 
     <hr>
 
@@ -118,6 +121,6 @@
 
 </div>
 
-<script src="/static/js/leave.js"></script>
+<script src="/static/js/leave.js?v=20260713-csrf-everywhere"></script>
 
 {% endblock %}
